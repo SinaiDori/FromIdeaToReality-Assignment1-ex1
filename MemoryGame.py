@@ -57,7 +57,7 @@ play_again_button_rect = pygame.Rect(
 
 
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -69,6 +69,7 @@ def reset_game():
     selected_cards = []
     delay_timer = 0
     start_time = time.time()
+    end_time = None  # Reset end time
     heat_strike = 0  # Reset heat strike count
     game_won = False
 
@@ -80,6 +81,7 @@ selected_cards = []
 last_match_time = None
 delay_timer = 0
 start_time = time.time()
+end_time = None  # Initialize end time
 game_won = False
 heat_strike = 0  # Initialize heat strike count
 reset_game()
@@ -122,6 +124,8 @@ while running:
                                           for card in cards)
                         if all_matched:
                             game_won = True
+                            end_time = time.time()
+
                     else:
                         print("Not a match.")
                         delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
@@ -167,8 +171,13 @@ while running:
             selected_cards = []
             delay_timer = 0
 
+    # Update the timer
+    if game_won:
+        current_time = end_time - start_time
+    else:
+        current_time = time.time() - start_time
+
     # Draw timer
-    current_time = time.time() - start_time
     minutes = int(current_time // 60)
     seconds = int(current_time % 60)
     timer_text = f"Time: {minutes:02d}:{seconds:02d}"
