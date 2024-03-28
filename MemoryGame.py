@@ -52,12 +52,16 @@ card_y = (SCREEN_HEIGHT - (GRID_SIZE * CARD_SIZE + (GRID_SIZE - 1)
 reset_button_rect = pygame.Rect(10, 10, 100, 30)
 play_again_button_rect = pygame.Rect(
     SCREEN_WIDTH // 2 - 75, 40, 150, 30)  # Adjusted position for top UI
+one_player_button_rect = pygame.Rect(
+    SCREEN_WIDTH // 2 - 55, 50, 110, 30)
+two_player_button_rect = pygame.Rect(
+    SCREEN_WIDTH // 2 - 55, 100, 110, 30)  # Adjusted position and dimensions
 
 # Function to reset the game
 
 
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -72,6 +76,9 @@ def reset_game():
     end_time = None  # Reset end time
     heat_strike = 0  # Reset heat strike count
     game_won = False
+    current_player = 0  # Player 0 starts the game
+    player1_score = 0  # Reset player 1 score
+    player2_score = 0  # Reset player 2 score
 
 
 # Main game loop
@@ -84,7 +91,13 @@ start_time = time.time()
 end_time = None  # Initialize end time
 game_won = False
 heat_strike = 0  # Initialize heat strike count
-reset_game()
+num_players = None  # Initialize num_players
+current_player = None  # Initialize current_player
+player1_score = 0  # Initialize player 1 score
+player2_score = 0  # Initialize player 2 score
+
+# Initial state to choose the number of players
+choose_players = True
 
 while running:
     for event in pygame.event.get():
@@ -92,9 +105,22 @@ while running:
             running = False
 
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if not game_won:
+            if choose_players:
+                # Check if one player button is clicked
+                if one_player_button_rect.collidepoint(event.pos):
+                    num_players = 1
+                    choose_players = False
+                    reset_game()
+
+                # Check if two player button is clicked
+                if two_player_button_rect.collidepoint(event.pos):
+                    num_players = 2
+                    choose_players = False
+                    reset_game()
+
+            if not choose_players and not game_won:
                 if len(selected_cards) < 2:  # Ensure only two cards are selected
-                    x, y = pygame.mouse.get_pos()
+                    x, y = event.pos
                     row = (y - card_y) // (CARD_SIZE + MARGIN)
                     col = (x - card_x) // (CARD_SIZE + MARGIN)
                     index = row * GRID_SIZE + col
@@ -108,7 +134,6 @@ while running:
                 # Check for a match
                 if len(selected_cards) == 2:
                     if selected_cards[0] != selected_cards[1] and cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
-                        print("Match found!")
                         cards[selected_cards[0]]['clickable'] = False
                         cards[selected_cards[1]]['clickable'] = False
                         selected_cards = []
@@ -126,88 +151,148 @@ while running:
                             game_won = True
                             end_time = time.time()
 
+                        # If it's a 2-player game, give the current player another turn and increment their score
+                        if num_players == 2:
+                            if current_player == 0:
+                                player1_score += 1
+                            else:
+                                player2_score += 1
+                            continue
+
                     else:
-                        print("Not a match.")
                         delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
 
                         # Reset heat strike on mismatch
                         heat_strike = 0
 
+                        # Switch to the next player's turn in a 2-player game
+                        if num_players == 2:
+                            current_player = (current_player + 1) % 2
+
             # Check if reset button is clicked
             if reset_button_rect.collidepoint(event.pos):
                 reset_game()
+                choose_players = True
 
             # Check if play again button is clicked
             if game_won and play_again_button_rect.collidepoint(event.pos):
                 reset_game()
+                choose_players = True
 
     # Update the screen
     screen.fill(GRAY)
 
-    # Draw cards
-    for i, card in enumerate(cards):
-        row = i // GRID_SIZE
-        col = i % GRID_SIZE
-        x = card_x + col * (CARD_SIZE + MARGIN)
-        y = card_y + row * (CARD_SIZE + MARGIN)
+    if choose_players:
+        # Draw "Choose number of players" text
+        font = pygame.font.Font(None, 36)
+        text = font.render("Choose number of players", True, BLACK)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, 20))
+        screen.blit(text, text_rect)
 
-        if card['revealed']:
-            screen.blit(card['image'], (x, y))
+        # Draw one player button
+        pygame.draw.rect(screen, BLACK, one_player_button_rect, 2)
+        one_player_text = font.render("1 Player", True, BLACK)
+        one_player_text_rect = one_player_text.get_rect(
+            center=one_player_button_rect.center)
+        screen.blit(one_player_text, one_player_text_rect)
+
+        # Draw two player button
+        pygame.draw.rect(screen, BLACK, two_player_button_rect, 2)
+        two_player_text = font.render("2 Players", True, BLACK)
+        two_player_text_rect = two_player_text.get_rect(
+            center=two_player_button_rect.center)
+        screen.blit(two_player_text, two_player_text_rect)
+
+    else:
+        # Draw cards
+        for i, card in enumerate(cards):
+            row = i // GRID_SIZE
+            col = i % GRID_SIZE
+            x = card_x + col * (CARD_SIZE + MARGIN)
+            y = card_y + row * (CARD_SIZE + MARGIN)
+
+            if card['revealed']:
+                screen.blit(card['image'], (x, y))
+            else:
+                # Draw a covered card
+                pygame.draw.rect(screen, PURPLE, (x, y, CARD_SIZE,
+                                                  CARD_SIZE), border_radius=10)
+                pygame.draw.rect(screen, WHITE, (x, y, CARD_SIZE,
+                                                 CARD_SIZE), 2, border_radius=10)
+
+        # Show the second card for a brief time before hiding again if they don't match
+        if delay_timer > 0 and pygame.time.get_ticks() < delay_timer:
+            pygame.display.flip()
         else:
-            # Draw a covered card
-            pygame.draw.rect(screen, PURPLE, (x, y, CARD_SIZE,
-                             CARD_SIZE), border_radius=10)
-            pygame.draw.rect(screen, WHITE, (x, y, CARD_SIZE,
-                             CARD_SIZE), 2, border_radius=10)
+            if delay_timer > 0:
+                # Hide the numbers and reset clickability
+                cards[selected_cards[0]]['revealed'] = False
+                cards[selected_cards[1]]['revealed'] = False
+                selected_cards = []
+                delay_timer = 0
 
-    # Show the second card for a brief time before hiding again if they don't match
-    if delay_timer > 0 and pygame.time.get_ticks() < delay_timer:
-        pygame.display.flip()
-    else:
-        if delay_timer > 0:
-            # Hide the numbers and reset clickability
-            cards[selected_cards[0]]['revealed'] = False
-            cards[selected_cards[1]]['revealed'] = False
-            selected_cards = []
-            delay_timer = 0
+        # Update the timer
+        if game_won:
+            current_time = end_time - start_time
+        else:
+            current_time = time.time() - start_time
 
-    # Update the timer
-    if game_won:
-        current_time = end_time - start_time
-    else:
-        current_time = time.time() - start_time
+        # Draw timer
+        minutes = int(current_time // 60)
+        seconds = int(current_time % 60)
+        timer_text = f"Time: {minutes:02d}:{seconds:02d}"
+        font = pygame.font.Font(None, 24)
+        timer_surface = font.render(timer_text, True, BLACK)
+        screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
 
-    # Draw timer
-    minutes = int(current_time // 60)
-    seconds = int(current_time % 60)
-    timer_text = f"Time: {minutes:02d}:{seconds:02d}"
-    font = pygame.font.Font(None, 24)
-    timer_surface = font.render(timer_text, True, BLACK)
-    screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
+        # Draw Player 1 Score
+        if num_players == 2:
+            player1_score_text = f"Player 1 Score: {player1_score}"
+            player1_score_surface = font.render(
+                player1_score_text, True, BLACK)
+            # Adjusted position
+            screen.blit(player1_score_surface, (10, SCREEN_HEIGHT - 90))
 
-    # Draw Heat Strike
-    heat_strike_text = f"Heat Strike: {heat_strike}"
-    heat_strike_surface = font.render(heat_strike_text, True, BLACK)
-    screen.blit(heat_strike_surface, (10, SCREEN_HEIGHT - 30))
+        # Draw Player 2 Score
+        if num_players == 2:
+            player2_score_text = f"Player 2 Score: {player2_score}"
+            player2_score_surface = font.render(
+                player2_score_text, True, BLACK)
+            screen.blit(player2_score_surface,
+                        (10, SCREEN_HEIGHT - 60))  # Adjusted position
 
-    # Draw reset button
-    pygame.draw.rect(screen, BLACK, reset_button_rect, 2)
-    reset_text = font.render("Reset", True, BLACK)
-    reset_text_rect = reset_text.get_rect(center=reset_button_rect.center)
-    screen.blit(reset_text, reset_text_rect)
+        # Draw Heat Strike
+        heat_strike_text = f"Heat Strike: {heat_strike}"
+        heat_strike_surface = font.render(heat_strike_text, True, BLACK)
+        # Adjusted position
+        screen.blit(heat_strike_surface, (10, SCREEN_HEIGHT - 30))
 
-    # Draw "Well done!" message and "Play again" button if game is won
-    if game_won:
-        well_done_text = font.render("Well done!", True, BLACK)
-        well_done_rect = well_done_text.get_rect(
-            center=(SCREEN_WIDTH // 2, 10))
-        screen.blit(well_done_text, well_done_rect)
+        # Draw reset button
+        pygame.draw.rect(screen, BLACK, reset_button_rect, 2)
+        reset_text = font.render("Reset", True, BLACK)
+        reset_text_rect = reset_text.get_rect(center=reset_button_rect.center)
+        screen.blit(reset_text, reset_text_rect)
 
-        pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
-        play_again_text = font.render("Play Again", True, BLACK)
-        play_again_text_rect = play_again_text.get_rect(
-            center=play_again_button_rect.center)
-        screen.blit(play_again_text, play_again_text_rect)
+        # Draw "Well done!" message and "Play again" button if game is won
+        if game_won:
+            well_done_text = font.render("Well done!", True, BLACK)
+            well_done_rect = well_done_text.get_rect(
+                center=(SCREEN_WIDTH // 2, 10))
+            screen.blit(well_done_text, well_done_rect)
+
+            pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
+            play_again_text = font.render("Play Again", True, BLACK)
+            play_again_text_rect = play_again_text.get_rect(
+                center=play_again_button_rect.center)
+            screen.blit(play_again_text, play_again_text_rect)
+
+        # Draw whose turn it is
+        if num_players == 2:
+            turn_text = font.render(
+                f"Player {current_player + 1}'s Turn", True, BLACK)
+            turn_text_rect = turn_text.get_rect(
+                bottomright=(SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10))  # Adjusted position
+            screen.blit(turn_text, turn_text_rect)
 
     pygame.display.flip()
     clock.tick(FPS)
