@@ -23,6 +23,10 @@ BLACK = (0, 0, 0)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Memory Game")
 
+# Load sound effects
+# Replace with your sound file
+match_sound = pygame.mixer.Sound("Super_Mario_World_Coin.wav")
+
 # Load card images and scale them
 card_images = []
 for i in range(1, 9):
@@ -53,7 +57,7 @@ play_again_button_rect = pygame.Rect(
 
 
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -65,6 +69,8 @@ def reset_game():
     selected_cards = []
     delay_timer = 0
     start_time = time.time()
+    heat_strike = 0  # Reset heat strike count
+    game_won = False
 
 
 # Main game loop
@@ -75,6 +81,7 @@ last_match_time = None
 delay_timer = 0
 start_time = time.time()
 game_won = False
+heat_strike = 0  # Initialize heat strike count
 reset_game()
 
 while running:
@@ -91,17 +98,24 @@ while running:
                     index = row * GRID_SIZE + col
 
                     if 0 <= index < len(cards) and cards[index]['clickable']:
-                        selected_cards.append(index)
-                        # Mark the card as revealed
-                        cards[index]['revealed'] = True
+                        if len(selected_cards) == 0 or index != selected_cards[0]:
+                            selected_cards.append(index)
+                            # Mark the card as revealed
+                            cards[index]['revealed'] = True
 
                 # Check for a match
                 if len(selected_cards) == 2:
-                    if cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
+                    if selected_cards[0] != selected_cards[1] and cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
                         print("Match found!")
                         cards[selected_cards[0]]['clickable'] = False
                         cards[selected_cards[1]]['clickable'] = False
                         selected_cards = []
+
+                        # Increment heat strike
+                        heat_strike += 1
+
+                        # Play the match sound
+                        match_sound.play()
 
                         # Check if all cards are matched
                         all_matched = all(not card['clickable']
@@ -112,15 +126,16 @@ while running:
                         print("Not a match.")
                         delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
 
+                        # Reset heat strike on mismatch
+                        heat_strike = 0
+
             # Check if reset button is clicked
             if reset_button_rect.collidepoint(event.pos):
                 reset_game()
-                game_won = False
 
             # Check if play again button is clicked
             if game_won and play_again_button_rect.collidepoint(event.pos):
                 reset_game()
-                game_won = False
 
     # Update the screen
     screen.fill(GRAY)
@@ -161,16 +176,19 @@ while running:
     timer_surface = font.render(timer_text, True, BLACK)
     screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
 
+    # Draw Heat Strike
+    heat_strike_text = f"Heat Strike: {heat_strike}"
+    heat_strike_surface = font.render(heat_strike_text, True, BLACK)
+    screen.blit(heat_strike_surface, (10, SCREEN_HEIGHT - 30))
+
     # Draw reset button
     pygame.draw.rect(screen, BLACK, reset_button_rect, 2)
-    font = pygame.font.Font(None, 24)
     reset_text = font.render("Reset", True, BLACK)
     reset_text_rect = reset_text.get_rect(center=reset_button_rect.center)
     screen.blit(reset_text, reset_text_rect)
 
     # Draw "Well done!" message and "Play again" button if game is won
     if game_won:
-        font = pygame.font.Font(None, 24)
         well_done_text = font.render("Well done!", True, BLACK)
         well_done_rect = well_done_text.get_rect(
             center=(SCREEN_WIDTH // 2, 10))
