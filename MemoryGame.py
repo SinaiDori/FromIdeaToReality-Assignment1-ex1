@@ -52,6 +52,8 @@ card_y = (SCREEN_HEIGHT - (GRID_SIZE * CARD_SIZE + (GRID_SIZE - 1)
 reset_button_rect = pygame.Rect(10, 10, 100, 30)
 play_again_button_rect = pygame.Rect(
     SCREEN_WIDTH // 2 - 75, 40, 150, 30)  # Adjusted position for top UI
+attack_button_rect = pygame.Rect(
+    SCREEN_WIDTH // 2 - 220, 50, 155, 30)  # Adjusted position for top UI
 one_player_button_rect = pygame.Rect(
     SCREEN_WIDTH // 2 - 55, 50, 110, 30)
 two_player_button_rect = pygame.Rect(
@@ -106,6 +108,11 @@ while running:
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if choose_players:
+                # Check if attack mode button is clicked
+                if attack_button_rect.collidepoint(event.pos):
+                    # Implement attack mode functionality here
+                    pass
+
                 # Check if one player button is clicked
                 if one_player_button_rect.collidepoint(event.pos):
                     num_players = 1
@@ -188,6 +195,13 @@ while running:
         text = font.render("Choose number of players", True, BLACK)
         text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, 20))
         screen.blit(text, text_rect)
+
+        # Draw attack mode button
+        pygame.draw.rect(screen, BLACK, attack_button_rect, 2)
+        attack_text = font.render("Attack Mode", True, BLACK)
+        attack_text_rect = attack_text.get_rect(
+            center=attack_button_rect.center)
+        screen.blit(attack_text, attack_text_rect)
 
         # Draw one player button
         pygame.draw.rect(screen, BLACK, one_player_button_rect, 2)
