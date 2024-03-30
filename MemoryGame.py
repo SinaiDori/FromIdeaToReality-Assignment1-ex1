@@ -61,9 +61,11 @@ two_player_button_rect = pygame.Rect(
 
 # Function to reset the game
 
+reduce = 0  # Initialize countdown reduction
+
 
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown, reduce
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -83,9 +85,10 @@ def reset_game():
     player2_score = 0  # Reset player 2 score
     attack_mode = False  # Reset attack mode
     countdown = 60  # Reset countdown timer
+    reduce = 0  # Reset countdown reduction
 
 
-def reset_game_attack_mode():
+def reset_game_attack_mode(countdown_reduce=0):
     global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
@@ -104,7 +107,8 @@ def reset_game_attack_mode():
     current_player = 0  # Player 0 starts the game
     player1_score = 0  # Reset player 1 score
     player2_score = 0  # Reset player 2 score
-    countdown = 60  # Reset countdown timer
+    # Reduce countdown if specified, but keep a minimum of 10 seconds
+    countdown = max(60 - countdown_reduce, 10)
 
 # Function to handle the countdown timer for the "Attack Mode"
 
@@ -138,7 +142,7 @@ player2_score = 0  # Initialize player 2 score
 attack_mode = False  # Initialize attack mode
 countdown = 60  # Initialize countdown timer
 last_countdown_update = time.time()  # Initialize last countdown update time
-
+countdown_reduce = 0  # Initialize countdown reduction
 # Initial state to choose the number of players
 choose_players = True
 
@@ -307,6 +311,12 @@ while running:
             if countdown <= 0:
                 game_won = True
                 end_time = time.time()
+            elif countdown > 0 and all(not card['clickable'] for card in cards):
+                countdown_reduce += 10  # Increase countdown reduction by 10 seconds
+                # Reset the game with reduced countdown
+                reset_game_attack_mode(countdown_reduce)
+                start_time = time.time()  # Reset start time
+                last_countdown_update = start_time  # Reset last countdown update time
         else:
             current_time = time.time() - start_time
 
@@ -351,12 +361,21 @@ while running:
 
         # Draw "Well done!" message and "Play again" button if game is won
         if game_won:
-            if attack_mode and countdown <= 0:  # Check if countdown reached 0 in attack mode
-                maybe_next_time_text = font.render(
-                    "Maybe next time!", True, BLACK)
-                maybe_next_time_rect = maybe_next_time_text.get_rect(
-                    center=(SCREEN_WIDTH // 2, 10))
-                screen.blit(maybe_next_time_text, maybe_next_time_rect)
+            if attack_mode:  # Check if in attack mode
+                if countdown <= 0:
+                    maybe_next_time_text = font.render(
+                        "Maybe next time!", True, BLACK)
+                    maybe_next_time_rect = maybe_next_time_text.get_rect(
+                        center=(SCREEN_WIDTH // 2, 10))
+                    screen.blit(maybe_next_time_text, maybe_next_time_rect)
+                else:
+                    # Reset the game for attack mode
+                    # Reduce countdown by 10 seconds
+                    reduce += 10
+                    reset_game_attack_mode(reduce)
+                    start_time = time.time()  # Reset start time
+                    last_countdown_update = start_time  # Reset last countdown update time
+                    game_won = False  # Reset game won flag
             else:
                 well_done_text = font.render("Well done!", True, BLACK)
                 well_done_rect = well_done_text.get_rect(
