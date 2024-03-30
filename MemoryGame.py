@@ -110,13 +110,15 @@ def reset_game_attack_mode():
 
 
 def countdown_timer(remaining_time):
+    if remaining_time <= 0:
+        return 0
     minutes = remaining_time // 60
     seconds = remaining_time % 60
     # countdown_text = f"Countdown: {minutes:02d}:{seconds:02d}"
     # font = pygame.font.Font(None, 24)
     # countdown_surface = font.render(countdown_text, True, BLACK)
     # screen.blit(countdown_surface, (SCREEN_WIDTH - 150, 10))
-    return remaining_time - 1
+    return max(remaining_time - 1, 0)
 
 
 # Main game loop
@@ -302,7 +304,7 @@ while running:
             if current_time - last_countdown_update >= 1:
                 countdown = countdown_timer(countdown)
                 last_countdown_update = current_time
-            if countdown < 0:
+            if countdown <= 0:
                 game_won = True
                 end_time = time.time()
         else:
@@ -349,10 +351,17 @@ while running:
 
         # Draw "Well done!" message and "Play again" button if game is won
         if game_won:
-            well_done_text = font.render("Well done!", True, BLACK)
-            well_done_rect = well_done_text.get_rect(
-                center=(SCREEN_WIDTH // 2, 10))
-            screen.blit(well_done_text, well_done_rect)
+            if attack_mode and countdown <= 0:  # Check if countdown reached 0 in attack mode
+                maybe_next_time_text = font.render(
+                    "Maybe next time!", True, BLACK)
+                maybe_next_time_rect = maybe_next_time_text.get_rect(
+                    center=(SCREEN_WIDTH // 2, 10))
+                screen.blit(maybe_next_time_text, maybe_next_time_rect)
+            else:
+                well_done_text = font.render("Well done!", True, BLACK)
+                well_done_rect = well_done_text.get_rect(
+                    center=(SCREEN_WIDTH // 2, 10))
+                screen.blit(well_done_text, well_done_rect)
 
             pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
             play_again_text = font.render("Play Again", True, BLACK)
