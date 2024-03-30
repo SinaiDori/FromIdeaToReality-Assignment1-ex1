@@ -63,7 +63,7 @@ two_player_button_rect = pygame.Rect(
 
 
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -81,6 +81,42 @@ def reset_game():
     current_player = 0  # Player 0 starts the game
     player1_score = 0  # Reset player 1 score
     player2_score = 0  # Reset player 2 score
+    attack_mode = False  # Reset attack mode
+    countdown = 60  # Reset countdown timer
+
+
+def reset_game_attack_mode():
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown
+    random.shuffle(card_images)
+    cards = [None] * (GRID_SIZE * GRID_SIZE)
+    for i in range(len(cards)):
+        cards[i] = card_images[i]
+        # Reset the 'revealed' state for all cards
+        cards[i]['revealed'] = False
+        # Reset the 'clickable' state for all cards
+        cards[i]['clickable'] = True
+    selected_cards = []
+    delay_timer = 0
+    start_time = time.time()
+    end_time = None  # Reset end time
+    heat_strike = 0  # Reset heat strike count
+    game_won = False
+    current_player = 0  # Player 0 starts the game
+    player1_score = 0  # Reset player 1 score
+    player2_score = 0  # Reset player 2 score
+    countdown = 60  # Reset countdown timer
+
+# Function to handle the countdown timer for the "Attack Mode"
+
+
+def countdown_timer(remaining_time):
+    minutes = remaining_time // 60
+    seconds = remaining_time % 60
+    # countdown_text = f"Countdown: {minutes:02d}:{seconds:02d}"
+    # font = pygame.font.Font(None, 24)
+    # countdown_surface = font.render(countdown_text, True, BLACK)
+    # screen.blit(countdown_surface, (SCREEN_WIDTH - 150, 10))
+    return remaining_time - 1
 
 
 # Main game loop
@@ -97,6 +133,9 @@ num_players = None  # Initialize num_players
 current_player = None  # Initialize current_player
 player1_score = 0  # Initialize player 1 score
 player2_score = 0  # Initialize player 2 score
+attack_mode = False  # Initialize attack mode
+countdown = 60  # Initialize countdown timer
+last_countdown_update = time.time()  # Initialize last countdown update time
 
 # Initial state to choose the number of players
 choose_players = True
@@ -110,8 +149,11 @@ while running:
             if choose_players:
                 # Check if attack mode button is clicked
                 if attack_button_rect.collidepoint(event.pos):
-                    # Implement attack mode functionality here
-                    pass
+                    attack_mode = True
+                    num_players = 1
+                    choose_players = False
+                    reset_game_attack_mode()
+                    countdown = 60  # Set the initial countdown timer to 60 seconds
 
                 # Check if one player button is clicked
                 if one_player_button_rect.collidepoint(event.pos):
@@ -189,6 +231,13 @@ while running:
     # Update the screen
     screen.fill(GRAY)
 
+    if attack_mode:
+        # Draw countdown timer
+        countdown_text = f"Countdown: {countdown // 60:02d}:{countdown % 60:02d}"
+        font = pygame.font.Font(None, 24)
+        countdown_surface = font.render(countdown_text, True, BLACK)
+        screen.blit(countdown_surface, (SCREEN_WIDTH - 150, 10))
+
     if choose_players:
         # Draw "Choose number of players" text
         font = pygame.font.Font(None, 36)
@@ -248,16 +297,27 @@ while running:
         # Update the timer
         if game_won:
             current_time = end_time - start_time
+        elif attack_mode:
+            current_time = time.time()
+            if current_time - last_countdown_update >= 1:
+                countdown = countdown_timer(countdown)
+                last_countdown_update = current_time
+            if countdown < 0:
+                game_won = True
+                end_time = time.time()
         else:
             current_time = time.time() - start_time
 
-        # Draw timer
-        minutes = int(current_time // 60)
-        seconds = int(current_time % 60)
-        timer_text = f"Time: {minutes:02d}:{seconds:02d}"
-        font = pygame.font.Font(None, 24)
-        timer_surface = font.render(timer_text, True, BLACK)
-        screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
+        if attack_mode:
+            pass  # No need to draw the regular timer
+        else:
+            # Draw timer
+            minutes = int(current_time // 60)
+            seconds = int(current_time % 60)
+            timer_text = f"Time: {minutes:02d}:{seconds:02d}"
+            font = pygame.font.Font(None, 24)
+            timer_surface = font.render(timer_text, True, BLACK)
+            screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
 
         # Draw Player 1 Score
         if num_players == 2:
