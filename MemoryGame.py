@@ -62,6 +62,9 @@ two_player_button_rect = pygame.Rect(
 # Function to reset the game
 
 reduce = 0  # Initialize countdown reduction
+# Constants for flip animation
+FLIP_SPEED = 10  # Adjust the speed of the flip animation
+MAX_ANGLE = 90   # Maximum angle for flipping (in degrees)
 
 
 def reset_game():
@@ -124,6 +127,30 @@ def countdown_timer(remaining_time):
     # screen.blit(countdown_surface, (SCREEN_WIDTH - 150, 10))
     return max(remaining_time - 1, 0)
 
+# Function to flip a card
+
+
+def flip_card(card_index):
+    global cards
+    if cards[card_index]['revealed']:
+        # If card is already revealed, hide it gradually
+        for angle in range(MAX_ANGLE, -1, -FLIP_SPEED):
+            rotated_image = pygame.transform.rotate(
+                cards[card_index]['image'], angle)
+            screen.blit(rotated_image, (x, y))
+            pygame.display.flip()
+            pygame.time.wait(1000 // FPS)
+        cards[card_index]['revealed'] = False
+    else:
+        # If card is not revealed, reveal it gradually
+        for angle in range(0, MAX_ANGLE + 1, FLIP_SPEED):
+            rotated_image = pygame.transform.rotate(
+                cards[card_index]['image'], angle)
+            screen.blit(rotated_image, (x, y))
+            pygame.display.flip()
+            pygame.time.wait(1000 // FPS)
+        cards[card_index]['revealed'] = True
+
 
 # Main game loop
 clock = pygame.time.Clock()
@@ -183,6 +210,8 @@ while running:
                     if 0 <= index < len(cards) and cards[index]['clickable']:
                         if len(selected_cards) == 0 or index != selected_cards[0]:
                             selected_cards.append(index)
+                            # Flip the card when clicked
+                            flip_card(index)
                             # Mark the card as revealed
                             cards[index]['revealed'] = True
 
@@ -253,7 +282,7 @@ while running:
 
         # Draw attack mode button
         pygame.draw.rect(screen, BLACK, attack_button_rect, 2)
-        attack_text = font.render("Attack Mode", True, BLACK)
+        attack_text = font.render("Time attack", True, BLACK)
         attack_text_rect = attack_text.get_rect(
             center=attack_button_rect.center)
         screen.blit(attack_text, attack_text_rect)
@@ -348,7 +377,7 @@ while running:
                         (10, SCREEN_HEIGHT - 60))  # Adjusted position
 
         # Draw Heat Strike
-        heat_strike_text = f"Heat Strike: {heat_strike}"
+        heat_strike_text = f"Hot streak: {heat_strike}"
         heat_strike_surface = font.render(heat_strike_text, True, BLACK)
         # Adjusted position
         screen.blit(heat_strike_surface, (10, SCREEN_HEIGHT - 30))
