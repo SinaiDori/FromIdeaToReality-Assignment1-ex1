@@ -131,10 +131,6 @@ def countdown_timer(remaining_time):
         return 0
     minutes = remaining_time // 60
     seconds = remaining_time % 60
-    # countdown_text = f"Countdown: {minutes:02d}:{seconds:02d}"
-    # font = pygame.font.Font(None, 24)
-    # countdown_surface = font.render(countdown_text, True, BLACK)
-    # screen.blit(countdown_surface, (SCREEN_WIDTH - 150, 10))
     return max(remaining_time - 1, 0)
 
 # Function to flip a card
@@ -278,6 +274,15 @@ while running:
                     reset_game()
 
             if not choose_players and not game_won:
+                # Check if the click is within the bounds of any card
+                clicked_on_card = False
+                for i, card in enumerate(cards):
+                    x, y = get_card_position(i)
+                    if x <= event.pos[0] <= x + CARD_SIZE and y <= event.pos[1] <= y + CARD_SIZE:
+                        clicked_on_card = True
+                        break
+
+            if clicked_on_card:
                 if len(selected_cards) < 2:  # Ensure only two cards are selected
                     x, y = event.pos
                     row = (y - card_y) // (CARD_SIZE + MARGIN)
