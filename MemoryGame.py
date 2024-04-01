@@ -246,6 +246,7 @@ countdown_reduce = 0  # Initialize countdown reduction
 # Initial state to choose the number of players
 choose_players = True
 
+clicked_on_card = False  # Define clicked_on_card outside of the event handling block
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -406,6 +407,7 @@ while running:
         else:
             if delay_timer > 0:
                 # Function to perform reverse flip animation for a card index
+
                 def reverse_flip_thread(index):
                     reverse_flip(index)
                     selected_cards.remove(index)
@@ -455,22 +457,6 @@ while running:
             timer_surface = font.render(timer_text, True, BLACK)
             screen.blit(timer_surface, (SCREEN_WIDTH - 100, 10))
 
-        # Draw Player 1 Score
-        if num_players == 2:
-            player1_score_text = f"Player 1 Score: {player1_score}"
-            player1_score_surface = font.render(
-                player1_score_text, True, BLACK)
-            # Adjusted position
-            screen.blit(player1_score_surface, (10, SCREEN_HEIGHT - 90))
-
-        # Draw Player 2 Score
-        if num_players == 2:
-            player2_score_text = f"Player 2 Score: {player2_score}"
-            player2_score_surface = font.render(
-                player2_score_text, True, BLACK)
-            screen.blit(player2_score_surface,
-                        (10, SCREEN_HEIGHT - 60))  # Adjusted position
-
         # Draw Heat Strike
         heat_strike_text = f"Hot streak: {heat_strike}"
         heat_strike_surface = font.render(heat_strike_text, True, BLACK)
@@ -519,6 +505,22 @@ while running:
             turn_text_rect = turn_text.get_rect(
                 bottomright=(SCREEN_WIDTH - 10, SCREEN_HEIGHT - 10))  # Adjusted position
             screen.blit(turn_text, turn_text_rect)
+
+        # Draw Player 1 Score
+        if num_players == 2:
+            player1_score_text = f"Player 1 Score: {player1_score}"
+            player1_score_surface = font.render(
+                player1_score_text, True, BLACK)
+            # Adjusted position
+            screen.blit(player1_score_surface, (10, 50))
+
+        # Draw Player 2 Score
+        if num_players == 2:
+            player2_score_text = f"Player 2 Score: {player2_score}"
+            player2_score_surface = font.render(
+                player2_score_text, True, BLACK)
+            # Adjusted position
+            screen.blit(player2_score_surface, (10, 70))
 
     pygame.display.flip()
     clock.tick(FPS)
