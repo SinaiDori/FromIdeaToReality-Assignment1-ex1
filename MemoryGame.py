@@ -1,6 +1,7 @@
 import pygame
 import random
 import time
+import threading
 
 # Initialize Pygame
 pygame.init()
@@ -18,6 +19,7 @@ WHITE = (255, 255, 255)
 GRAY = (200, 200, 200)
 PURPLE = (170, 0, 255)
 BLACK = (0, 0, 0)
+PINK = (255, 192, 203)
 
 # Set up the screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -31,17 +33,25 @@ match_sound = pygame.mixer.Sound("Super_Mario_World_Coin.wav")
 card_images = []
 for i in range(1, 9):
     for _ in range(2):  # Each number appears twice
-        # Create a surface with alpha channel
-        img = pygame.Surface((CARD_SIZE, CARD_SIZE), pygame.SRCALPHA)
-        pygame.draw.rect(img, PURPLE, (0, 0, CARD_SIZE, CARD_SIZE),
-                         border_radius=10)  # Draw a rounded rectangle
-        font = pygame.font.Font(None, 48)  # Increase font size
-        text = font.render(str(i), True, WHITE)
+        # Create the front image of the card (purple)
+        front_img = pygame.Surface((CARD_SIZE, CARD_SIZE), pygame.SRCALPHA)
+        pygame.draw.rect(front_img, PURPLE, (0, 0, CARD_SIZE,
+                         CARD_SIZE), border_radius=10)
+
+        # Create the back image of the card (pink with number)
+        back_img = pygame.Surface((CARD_SIZE, CARD_SIZE), pygame.SRCALPHA)
+        pygame.draw.rect(back_img, PINK, (0, 0, CARD_SIZE,
+                         CARD_SIZE), border_radius=10)
+
+        font = pygame.font.Font(None, 48)  # Increase font size for the number
+        text = font.render(str(i), True, BLACK)  # Black color for the text
         text_rect = text.get_rect(
             center=(CARD_SIZE // 2, CARD_SIZE // 2))  # Center the text
-        img.blit(text, text_rect)
-        card_images.append(
-            {'image': img, 'number': i, 'revealed': False, 'clickable': True})
+        back_img.blit(text, text_rect)  # Draw the number on the back image
+
+        card_images.append({'front_image': front_img, 'back_image': back_img,
+                           'number': i, 'revealed': False, 'clickable': True})
+
 
 # Center the cards
 card_x = (SCREEN_WIDTH - (GRID_SIZE * CARD_SIZE + (GRID_SIZE - 1) * MARGIN)) // 2
@@ -130,26 +140,93 @@ def countdown_timer(remaining_time):
 # Function to flip a card
 
 
+def get_card_position(card_index):
+    row = card_index // GRID_SIZE
+    col = card_index % GRID_SIZE
+    x = card_x + col * (CARD_SIZE + MARGIN)
+    y = card_y + row * (CARD_SIZE + MARGIN)
+    return x, y
+
+
 def flip_card(card_index):
-    global cards
-    if cards[card_index]['revealed']:
-        # If card is already revealed, hide it gradually
-        for angle in range(MAX_ANGLE, -1, -FLIP_SPEED):
-            rotated_image = pygame.transform.rotate(
-                cards[card_index]['image'], angle)
-            screen.blit(rotated_image, (x, y))
-            pygame.display.flip()
-            pygame.time.wait(1000 // FPS)
-        cards[card_index]['revealed'] = False
-    else:
-        # If card is not revealed, reveal it gradually
-        for angle in range(0, MAX_ANGLE + 1, FLIP_SPEED):
-            rotated_image = pygame.transform.rotate(
-                cards[card_index]['image'], angle)
-            screen.blit(rotated_image, (x, y))
-            pygame.display.flip()
-            pygame.time.wait(1000 // FPS)
-        cards[card_index]['revealed'] = True
+    global cards, screen
+
+    card = cards[card_index]
+    original_rect = pygame.Rect(
+        *get_card_position(card_index), CARD_SIZE, CARD_SIZE)
+    full_height = CARD_SIZE
+
+    # First half of the flip (gradually decrease the height from the top and bottom) - Purple part
+    for height in range(full_height // 2, 0, -5):  # Adjust step size if needed
+        # Use SRCALPHA for transparency
+        card_surface = pygame.Surface(
+            (CARD_SIZE, full_height), pygame.SRCALPHA)
+        # Draw the purple part with rounded corners
+        pygame.draw.rect(card_surface, GRAY, (0, 0, CARD_SIZE,
+                         full_height), border_radius=10)
+        # Draw the pink part with rounded corners
+        pygame.draw.rect(card_surface, PURPLE, (0, full_height //
+                         2 - height, CARD_SIZE, height * 2), border_radius=10)
+        scaled_rect = card_surface.get_rect(center=original_rect.center)
+
+        screen.blit(screen, (0, 0))  # Clear the area
+        screen.blit(card_surface, scaled_rect)
+        pygame.display.update(scaled_rect)
+        pygame.time.delay(3)  # Adjust delay if needed
+
+    # Second half of the flip (expand from the middle to the top and bottom ends) - Pink part
+    for height in range(0, full_height + 1, 5):  # Adjust step size if needed
+        # Use SRCALPHA for transparency
+        card_surface = pygame.Surface((CARD_SIZE, height), pygame.SRCALPHA)
+        card_surface.blit(cards[card_index]['back_image'],
+                          (0, 0), (0, 0, CARD_SIZE, height))
+        # Draw with rounded corners
+        pygame.draw.rect(card_surface, PINK,
+                         (0, 0, CARD_SIZE, height), border_radius=10)
+        scaled_rect = card_surface.get_rect(center=original_rect.center)
+
+        screen.blit(screen, (0, 0))  # Clear the area
+        screen.blit(card_surface, scaled_rect)
+        pygame.display.update(scaled_rect)
+        pygame.time.delay(3)  # Adjust delay if needed
+
+    # Set the card as revealed to maintain its state
+    cards[card_index]['revealed'] = True
+
+
+def reverse_flip(card_index):
+    global cards, screen
+    card = cards[card_index]
+    original_rect = pygame.Rect(
+        *get_card_position(card_index), CARD_SIZE, CARD_SIZE)
+    full_height = CARD_SIZE
+    # First half of the reverse flip (gradually decrease the height from the top and bottom) - Pink part
+    for height in range(full_height // 2, 0, -5):  # Adjust step size if needed
+        card_surface = pygame.Surface(
+            (CARD_SIZE, full_height), pygame.SRCALPHA)
+        pygame.draw.rect(card_surface, GRAY, (0, 0, CARD_SIZE,
+                         full_height), border_radius=10)
+        pygame.draw.rect(card_surface, PINK, (0, full_height //
+                         2 - height, CARD_SIZE, height * 2), border_radius=10)
+        scaled_rect = card_surface.get_rect(center=original_rect.center)
+        screen.blit(screen, (0, 0))  # Clear the area
+        screen.blit(card_surface, scaled_rect)
+        pygame.display.update(scaled_rect)
+        pygame.time.delay(1)  # Adjust delay if needed
+    # Second half of the reverse flip (expand from the middle to the top and bottom ends) - Purple part
+    for height in range(0, full_height + 1, 5):  # Adjust step size if needed
+        card_surface = pygame.Surface((CARD_SIZE, height), pygame.SRCALPHA)
+        card_surface.blit(cards[card_index]['front_image'],
+                          (0, 0), (0, 0, CARD_SIZE, height))
+        pygame.draw.rect(card_surface, PURPLE,
+                         (0, 0, CARD_SIZE, height), border_radius=10)
+        scaled_rect = card_surface.get_rect(center=original_rect.center)
+        screen.blit(screen, (0, 0))  # Clear the area
+        screen.blit(card_surface, scaled_rect)
+        pygame.display.update(scaled_rect)
+        pygame.time.delay(1)  # Adjust delay if needed
+    # Reset the card to its initial state
+    cards[card_index]['revealed'] = False
 
 
 # Main game loop
@@ -304,29 +381,42 @@ while running:
     else:
         # Draw cards
         for i, card in enumerate(cards):
-            row = i // GRID_SIZE
-            col = i % GRID_SIZE
-            x = card_x + col * (CARD_SIZE + MARGIN)
-            y = card_y + row * (CARD_SIZE + MARGIN)
-
+            x, y = get_card_position(i)
             if card['revealed']:
-                screen.blit(card['image'], (x, y))
+                # Draw the back image with the number
+                screen.blit(card['back_image'], (x, y))
             else:
-                # Draw a covered card
-                pygame.draw.rect(screen, PURPLE, (x, y, CARD_SIZE,
-                                                  CARD_SIZE), border_radius=10)
-                pygame.draw.rect(screen, WHITE, (x, y, CARD_SIZE,
-                                                 CARD_SIZE), 2, border_radius=10)
+                # Draw the front image (purple)
+                screen.blit(card['front_image'], (x, y))
 
-        # Show the second card for a brief time before hiding again if they don't match
+        # Redraw only the necessary elements during the mismatch delay
         if delay_timer > 0 and pygame.time.get_ticks() < delay_timer:
-            pygame.display.flip()
+            # Draw only the required elements
+            # For example, update the areas where the two cards are shown
+            # This prevents the entire screen from being redrawn
+            update_rects = [pygame.Rect(*get_card_position(selected_cards[0]), CARD_SIZE, CARD_SIZE),
+                            pygame.Rect(*get_card_position(selected_cards[1]), CARD_SIZE, CARD_SIZE)]
+            pygame.display.update(update_rects)
+
         else:
             if delay_timer > 0:
-                # Hide the numbers and reset clickability
-                cards[selected_cards[0]]['revealed'] = False
-                cards[selected_cards[1]]['revealed'] = False
-                selected_cards = []
+                # Function to perform reverse flip animation for a card index
+                def reverse_flip_thread(index):
+                    reverse_flip(index)
+                    selected_cards.remove(index)
+
+                # Initiate reverse flip animations for both selected cards simultaneously
+                thread1 = threading.Thread(
+                    target=reverse_flip_thread, args=(selected_cards[0],))
+                thread2 = threading.Thread(
+                    target=reverse_flip_thread, args=(selected_cards[1],))
+                thread1.start()
+                thread2.start()
+
+                # Wait for both threads to complete before proceeding
+                thread1.join()
+                thread2.join()
+
                 delay_timer = 0
 
         # Update the timer
