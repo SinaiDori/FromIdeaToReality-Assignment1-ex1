@@ -4,7 +4,6 @@ import time
 import threading
 import pyaudio
 import vosk
-import queue
 
 # Initialize Pygame
 pygame.init()
@@ -32,8 +31,7 @@ pygame.display.set_caption("Memory Game")
 # Replace with your sound file
 match_sound = pygame.mixer.Sound("Super_Mario_World_Coin.wav")
 
-model = vosk.Model(
-    "/Users/sinaydori/Documents/From_idea_to_reality/FromIdeaToReality-Assignment1-ex1/vosk-model-small-en-us-0.15")
+model = vosk.Model("./vosk-model-small-en-us-0.15")
 recognizer = vosk.KaldiRecognizer(model, 16000)
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt16, channels=1,
@@ -110,7 +108,13 @@ def voice_control():
         'thirteen': 13,
         'fourteen': 14,
         'fifteen': 15,
-        'sixteen': 16
+        'sixteen': 16,
+        # Add mistake mappings
+        'for': 4,
+        'to': 2,
+        'ate': 8,
+        'tree': 3,
+        'sex': 6,
     }
 
     data = stream.read(4000)
@@ -147,9 +151,6 @@ def reset_game():
     countdown = 60  # Reset countdown timer
     reduce = 0  # Reset countdown reduction
     voice_control_mode = False
-    # if voice_control_thread is not None:
-    #     voice_control_thread.join()
-    #     voice_control_thread = None
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -508,7 +509,6 @@ while running:
         # Redraw only the necessary elements during the mismatch delay
         if delay_timer > 0 and pygame.time.get_ticks() < delay_timer:
             # Draw only the required elements
-            # For example, update the areas where the two cards are shown
             # This prevents the entire screen from being redrawn
             update_rects = [pygame.Rect(*get_card_position(selected_cards[0]), CARD_SIZE, CARD_SIZE),
                             pygame.Rect(*get_card_position(selected_cards[1]), CARD_SIZE, CARD_SIZE)]
