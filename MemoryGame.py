@@ -2,6 +2,9 @@ import pygame
 import random
 import time
 import threading
+import pyaudio
+import vosk
+import queue
 
 # Initialize Pygame
 pygame.init()
@@ -28,6 +31,13 @@ pygame.display.set_caption("Memory Game")
 # Load sound effects
 # Replace with your sound file
 match_sound = pygame.mixer.Sound("Super_Mario_World_Coin.wav")
+
+model = vosk.Model(
+    "/Users/sinaydori/Documents/From_idea_to_reality/FromIdeaToReality-Assignment1-ex1/vosk-model-small-en-us-0.15")
+recognizer = vosk.KaldiRecognizer(model, 16000)
+p = pyaudio.PyAudio()
+stream = p.open(format=pyaudio.paInt16, channels=1,
+                rate=16000, input=True, frames_per_buffer=8000)
 
 # Load card images and scale them
 card_images = []
@@ -67,7 +77,9 @@ attack_button_rect = pygame.Rect(
 one_player_button_rect = pygame.Rect(
     SCREEN_WIDTH // 2 - 55, 50, 110, 30)
 two_player_button_rect = pygame.Rect(
-    SCREEN_WIDTH // 2 - 55, 100, 110, 30)  # Adjusted position and dimensions
+    SCREEN_WIDTH // 2 - 65, 100, 127, 30)  # Adjusted position and dimensions
+voice_control_button_rect = pygame.Rect(
+    SCREEN_WIDTH // 2 + 65, 50, 170, 30)  # New button for voice control
 
 # Function to reset the game
 
@@ -77,8 +89,43 @@ FLIP_SPEED = 10  # Adjust the speed of the flip animation
 MAX_ANGLE = 90   # Maximum angle for flipping (in degrees)
 
 
+def voice_control():
+    stream.start_stream()
+
+    # recognizer = vosk.KaldiRecognizer(model, 16000)
+
+    number_mapping = {
+        'one': 1,
+        'two': 2,
+        'three': 3,
+        'four': 4,
+        'five': 5,
+        'six': 6,
+        'seven': 7,
+        'eight': 8,
+        'nine': 9,
+        'ten': 10,
+        'eleven': 11,
+        'twelve': 12,
+        'thirteen': 13,
+        'fourteen': 14,
+        'fifteen': 15,
+        'sixteen': 16
+    }
+
+    data = stream.read(4000)
+    if recognizer.AcceptWaveform(data):
+        result = recognizer.Result()
+        # Remove leading/trailing whitespaces
+        text = result[14:-3].strip()
+        print(text)
+        if text in number_mapping:
+            card_number = number_mapping[text]
+            return card_number
+
+
 def reset_game():
-    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown, reduce
+    global cards, selected_cards, delay_timer, start_time, heat_strike, game_won, end_time, current_player, player1_score, player2_score, attack_mode, countdown, reduce, voice_control_thread, voice_control_mode
     random.shuffle(card_images)
     cards = [None] * (GRID_SIZE * GRID_SIZE)
     for i in range(len(cards)):
@@ -99,6 +146,13 @@ def reset_game():
     attack_mode = False  # Reset attack mode
     countdown = 60  # Reset countdown timer
     reduce = 0  # Reset countdown reduction
+    voice_control_mode = False
+    # if voice_control_thread is not None:
+    #     voice_control_thread.join()
+    #     voice_control_thread = None
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
 
 
 def reset_game_attack_mode(countdown_reduce=0):
@@ -245,9 +299,45 @@ last_countdown_update = time.time()  # Initialize last countdown update time
 countdown_reduce = 0  # Initialize countdown reduction
 # Initial state to choose the number of players
 choose_players = True
-
 clicked_on_card = False  # Define clicked_on_card outside of the event handling block
+voice_control_thread = None
+voice_control_mode = False
+
 while running:
+    if voice_control_mode:
+        card_number = voice_control()
+        if card_number:
+            index = card_number - 1
+            if 0 <= index < len(cards) and cards[index]['clickable']:
+                if len(selected_cards) == 0 or index != selected_cards[0]:
+                    selected_cards.append(index)
+                    flip_card(index)
+                    cards[index]['revealed'] = True
+                # Check for a match
+                if len(selected_cards) == 2:
+                    if selected_cards[0] != selected_cards[1] and cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
+                        cards[selected_cards[0]]['clickable'] = False
+                        cards[selected_cards[1]]['clickable'] = False
+                        selected_cards = []
+
+                        # Increment heat strike
+                        heat_strike += 1
+
+                        # Play the match sound
+                        match_sound.play()
+
+                        # Check if all cards are matched
+                        all_matched = all(not card['clickable']
+                                          for card in cards)
+                        if all_matched:
+                            game_won = True
+                            end_time = time.time()
+                    else:
+                        delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
+
+                        # Reset heat strike on mismatch
+                        heat_strike = 0
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -274,7 +364,20 @@ while running:
                     choose_players = False
                     reset_game()
 
-            if not choose_players and not game_won:
+                # Check if voice control button is clicked
+                if voice_control_button_rect.collidepoint(event.pos):
+                    reset_game()
+                    p = pyaudio.PyAudio()
+                    stream = p.open(format=pyaudio.paInt16, channels=1,
+                                    rate=16000, input=True, frames_per_buffer=8000)
+                    num_players = 1
+                    choose_players = False
+                    voice_control_mode = True
+                    # voice_control_thread = threading.Thread(
+                    #     target=voice_control)
+                    # voice_control_thread.start()
+
+            if not choose_players and not game_won and not voice_control_mode:
                 # Check if the click is within the bounds of any card
                 clicked_on_card = False
                 for i, card in enumerate(cards):
@@ -383,6 +486,13 @@ while running:
         two_player_text_rect = two_player_text.get_rect(
             center=two_player_button_rect.center)
         screen.blit(two_player_text, two_player_text_rect)
+
+        # Draw voice control button
+        pygame.draw.rect(screen, BLACK, voice_control_button_rect, 2)
+        voice_control_text = font.render("Voice control", True, BLACK)
+        voice_control_text_rect = voice_control_text.get_rect(
+            center=voice_control_button_rect.center)
+        screen.blit(voice_control_text, voice_control_text_rect)
 
     else:
         # Draw cards
