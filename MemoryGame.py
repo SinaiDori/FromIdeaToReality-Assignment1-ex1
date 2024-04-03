@@ -122,7 +122,6 @@ def voice_control():
         result = recognizer.Result()
         # Remove leading/trailing whitespaces
         text = result[14:-3].strip()
-        print(text)
         if text in number_mapping:
             card_number = number_mapping[text]
             return card_number
@@ -374,71 +373,71 @@ while running:
                     num_players = 1
                     choose_players = False
                     voice_control_mode = True
-                    # voice_control_thread = threading.Thread(
-                    #     target=voice_control)
-                    # voice_control_thread.start()
 
-            if not choose_players and not game_won and not voice_control_mode:
-                # Check if the click is within the bounds of any card
-                clicked_on_card = False
-                for i, card in enumerate(cards):
-                    x, y = get_card_position(i)
-                    if x <= event.pos[0] <= x + CARD_SIZE and y <= event.pos[1] <= y + CARD_SIZE:
-                        clicked_on_card = True
-                        break
+            if attack_mode and countdown <= 0:
+                pass  # Do nothing if countdown has ended
+            else:
+                if not choose_players and not game_won and not voice_control_mode:
+                    # Check if the click is within the bounds of any card
+                    clicked_on_card = False
+                    for i, card in enumerate(cards):
+                        x, y = get_card_position(i)
+                        if x <= event.pos[0] <= x + CARD_SIZE and y <= event.pos[1] <= y + CARD_SIZE:
+                            clicked_on_card = True
+                            break
 
-            if clicked_on_card:
-                if len(selected_cards) < 2:  # Ensure only two cards are selected
-                    x, y = event.pos
-                    row = (y - card_y) // (CARD_SIZE + MARGIN)
-                    col = (x - card_x) // (CARD_SIZE + MARGIN)
-                    index = row * GRID_SIZE + col
+                if clicked_on_card:
+                    if len(selected_cards) < 2:  # Ensure only two cards are selected
+                        x, y = event.pos
+                        row = (y - card_y) // (CARD_SIZE + MARGIN)
+                        col = (x - card_x) // (CARD_SIZE + MARGIN)
+                        index = row * GRID_SIZE + col
 
-                    if 0 <= index < len(cards) and cards[index]['clickable']:
-                        if len(selected_cards) == 0 or index != selected_cards[0]:
-                            selected_cards.append(index)
-                            # Flip the card when clicked
-                            flip_card(index)
-                            # Mark the card as revealed
-                            cards[index]['revealed'] = True
+                        if 0 <= index < len(cards) and cards[index]['clickable']:
+                            if len(selected_cards) == 0 or index != selected_cards[0]:
+                                selected_cards.append(index)
+                                # Flip the card when clicked
+                                flip_card(index)
+                                # Mark the card as revealed
+                                cards[index]['revealed'] = True
 
-                # Check for a match
-                if len(selected_cards) == 2:
-                    if selected_cards[0] != selected_cards[1] and cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
-                        cards[selected_cards[0]]['clickable'] = False
-                        cards[selected_cards[1]]['clickable'] = False
-                        selected_cards = []
+                    # Check for a match
+                    if len(selected_cards) == 2:
+                        if selected_cards[0] != selected_cards[1] and cards[selected_cards[0]]['number'] == cards[selected_cards[1]]['number']:
+                            cards[selected_cards[0]]['clickable'] = False
+                            cards[selected_cards[1]]['clickable'] = False
+                            selected_cards = []
 
-                        # Increment heat strike
-                        heat_strike += 1
+                            # Increment heat strike
+                            heat_strike += 1
 
-                        # Play the match sound
-                        match_sound.play()
+                            # Play the match sound
+                            match_sound.play()
 
-                        # Check if all cards are matched
-                        all_matched = all(not card['clickable']
-                                          for card in cards)
-                        if all_matched:
-                            game_won = True
-                            end_time = time.time()
+                            # Check if all cards are matched
+                            all_matched = all(not card['clickable']
+                                              for card in cards)
+                            if all_matched:
+                                game_won = True
+                                end_time = time.time()
 
-                        # If it's a 2-player game, give the current player another turn and increment their score
-                        if num_players == 2:
-                            if current_player == 0:
-                                player1_score += 1
-                            else:
-                                player2_score += 1
-                            continue
+                            # If it's a 2-player game, give the current player another turn and increment their score
+                            if num_players == 2:
+                                if current_player == 0:
+                                    player1_score += 1
+                                else:
+                                    player2_score += 1
+                                continue
 
-                    else:
-                        delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
+                        else:
+                            delay_timer = pygame.time.get_ticks() + int(SHOW_DELAY * 1000)  # Set the delay timer
 
-                        # Reset heat strike on mismatch
-                        heat_strike = 0
+                            # Reset heat strike on mismatch
+                            heat_strike = 0
 
-                        # Switch to the next player's turn in a 2-player game
-                        if num_players == 2:
-                            current_player = (current_player + 1) % 2
+                            # Switch to the next player's turn in a 2-player game
+                            if num_players == 2:
+                                current_player = (current_player + 1) % 2
 
             # Check if reset button is clicked
             if reset_button_rect.collidepoint(event.pos):
@@ -655,6 +654,11 @@ while running:
                     maybe_next_time_rect = maybe_next_time_text.get_rect(
                         center=(SCREEN_WIDTH // 2, 10))
                     screen.blit(maybe_next_time_text, maybe_next_time_rect)
+                    pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
+                    play_again_text = font.render("Play Again", True, BLACK)
+                    play_again_text_rect = play_again_text.get_rect(
+                        center=play_again_button_rect.center)
+                    screen.blit(play_again_text, play_again_text_rect)
                 else:
                     # Reset the game for attack mode
                     # Reduce countdown by 10 seconds
@@ -669,11 +673,11 @@ while running:
                     center=(SCREEN_WIDTH // 2, 10))
                 screen.blit(well_done_text, well_done_rect)
 
-            pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
-            play_again_text = font.render("Play Again", True, BLACK)
-            play_again_text_rect = play_again_text.get_rect(
-                center=play_again_button_rect.center)
-            screen.blit(play_again_text, play_again_text_rect)
+                pygame.draw.rect(screen, BLACK, play_again_button_rect, 2)
+                play_again_text = font.render("Play Again", True, BLACK)
+                play_again_text_rect = play_again_text.get_rect(
+                    center=play_again_button_rect.center)
+                screen.blit(play_again_text, play_again_text_rect)
 
         # Draw whose turn it is
         if num_players == 2:
