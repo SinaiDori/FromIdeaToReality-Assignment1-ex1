@@ -463,7 +463,7 @@ while running:
     if choose_players:
         # Draw "Choose number of players" text
         font = pygame.font.Font(None, 36)
-        text = font.render("Choose number of players", True, BLACK)
+        text = font.render("Choose your mode", True, BLACK)
         text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, 20))
         screen.blit(text, text_rect)
 
@@ -494,6 +494,73 @@ while running:
         voice_control_text_rect = voice_control_text.get_rect(
             center=voice_control_button_rect.center)
         screen.blit(voice_control_text, voice_control_text_rect)
+
+        # Draw "Modes instructions" text
+        # Draw "Modes instructions" text
+        instruction_font = pygame.font.Font(None, 24)
+        instruction_text = "Modes instructions:"
+        instruction_text_surface = instruction_font.render(
+            instruction_text, True, BLACK)
+        instruction_text_rect = instruction_text_surface.get_rect(
+            left=20, top=SCREEN_HEIGHT // 3)  # Adjust top position here
+        screen.blit(instruction_text_surface, instruction_text_rect)
+
+        instruction_texts = [
+            ("1 Player", "- a regular 1 player game."),
+            ("2 Players", "- a 2 player game, with a score to each player."),
+            ("Time attack", [
+                "- complete the board before the countdown ends,",
+                "each time you succeed the countdown goes down",
+                "by 10 seconds!"
+            ]),
+            ("Voice control", [
+                "- choose the cards to flip using only your voice.",
+                "Say the cards number according to the following grid:"
+            ])
+        ]
+
+        y_position = SCREEN_HEIGHT // 3 + 20  # Adjust the initial y_position here
+
+        for mode, texts in instruction_texts:
+            mode_surface = instruction_font.render(mode, True, BLACK)
+            mode_rect = mode_surface.get_rect(left=20, top=y_position)
+            screen.blit(mode_surface, mode_rect)
+
+            mode_underline_rect = pygame.Rect(
+                mode_rect.left, mode_rect.bottom - 2, mode_rect.width, 2)
+            pygame.draw.rect(screen, BLACK, mode_underline_rect)
+
+            if isinstance(texts, list):
+                line_spacing = 5  # Adjust the line spacing as needed
+                for text in texts:
+                    text_surface = instruction_font.render(text, True, BLACK)
+                    text_rect = text_surface.get_rect(
+                        left=mode_rect.right, top=y_position)
+                    screen.blit(text_surface, text_rect)
+                    y_position += text_rect.height + line_spacing
+            else:
+                text_surface = instruction_font.render(texts, True, BLACK)
+                text_rect = text_surface.get_rect(
+                    left=mode_rect.right, top=y_position)
+                screen.blit(text_surface, text_rect)
+                y_position += text_rect.height + 5
+
+        # Draw the grid table
+        cell_size = 30  # Adjust the size of the cell squares
+        grid_table = [
+            ["1", "2", "3", "4"],
+            ["5", "6", "7", "8"],
+            ["9", "10", "11", "12"],
+            ["13", "14", "15", "16"]
+        ]
+        for i, row in enumerate(grid_table):
+            for j, cell in enumerate(row):
+                cell_surface = instruction_font.render(cell, True, BLACK)
+                cell_rect = cell_surface.get_rect(
+                    left=20 + j * (cell_size + 5), top=y_position + i * (cell_size + 5))
+                pygame.draw.rect(
+                    screen, WHITE, (cell_rect.left - 2, cell_rect.top - 2, cell_size, cell_size))
+                screen.blit(cell_surface, cell_rect)
 
     else:
         # Draw cards
